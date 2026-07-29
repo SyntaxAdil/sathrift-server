@@ -14,7 +14,7 @@ app.use(cors());
 app.use(express.json());
 
 const uri = process.env.MONGO_URI as string;
-const port = process.env.PORT || 5000;
+const port = Number(process.env.PORT) || 5000;
 
 const client = new MongoClient(uri, {
   serverApi: {
@@ -117,14 +117,50 @@ async function run(): Promise<void> {
     }
   });
 
+  app.get('/api/my-products', async (req: Request, res: Response) => {
+    try {
+      const { sellerId } = req.query;
+
+      const result = await productCollection
+        .find({ sellerId: sellerId as string })
+        .sort({ createdAt: -1 })
+        .toArray();
+
+      res.status(200).json({
+        success: true,
+        message: 'My products fetched successfully',
+        data: result,
+      });
+    } catch {
+      res.status(500).json({
+        success: false,
+        message: 'My products fetched failed',
+      });
+    }
+  });
+
   app.patch('/api/product/:id', async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
+      const { sellerId } = req.body;
+
+      const product = await productCollection.findOne({
+        _id: new ObjectId(id as string),
+      });
+
+      if (!product || product.sellerId !== sellerId) {
+        return res.status(403).json({
+          success: false,
+          message: 'Unauthorized',
+        });
+      }
 
       const updateProduct = {
         ...req.body,
         updatedAt: new Date(),
       };
+
+      delete updateProduct.sellerId;
 
       const result = await productCollection.updateOne(
         { _id: new ObjectId(id as string) },
@@ -147,7 +183,18 @@ async function run(): Promise<void> {
   app.patch('/api/product/:id/status', async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const { status } = req.body;
+      const { status, sellerId } = req.body;
+
+      const product = await productCollection.findOne({
+        _id: new ObjectId(id as string),
+      });
+
+      if (!product || product.sellerId !== sellerId) {
+        return res.status(403).json({
+          success: false,
+          message: 'Unauthorized',
+        });
+      }
 
       const result = await productCollection.updateOne(
         { _id: new ObjectId(id as string) },
@@ -175,6 +222,22 @@ async function run(): Promise<void> {
   app.delete('/api/product/:id', async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
+      const { sellerId } = req.body;
+
+      const product = await productCollection.findOne({
+        _id: new ObjectId(id as string),
+      });
+
+      if (!product || product.sellerId !== sellerId) {
+        return res.status(403).json({
+          success: false,
+          message: 'Unauthorized',
+        });
+      }
+
+      await wishlistCollection.deleteMany({
+        productId: new ObjectId(id as string),
+      });
 
       const result = await productCollection.deleteOne({
         _id: new ObjectId(id as string),
@@ -299,8 +362,8 @@ async function run(): Promise<void> {
 
 run().catch(console.dir);
 
-app.listen(port, () => {
-  console.log(`Server running on http://localhost:${port}`);
+app.listen(port , '0.0.0.0', () => {
+  console.log(`Server running on port ${port}`);
 });
 
 export default app;
