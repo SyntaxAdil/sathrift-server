@@ -4,7 +4,7 @@ import express, { type Request, type Response } from 'express';
 import cors from 'cors';
 import { MongoClient, ServerApiVersion, ObjectId } from 'mongodb';
 import dotenv from 'dotenv';
-import { type Product, type Wishlist } from './types';
+import { type Product, type Wishlist } from './types.js';
 
 dns.setServers(['8.8.8.8', '8.8.4.4']);
 dotenv.config();
