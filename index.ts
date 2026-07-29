@@ -362,8 +362,8 @@ async function run(): Promise<void> {
 
 run().catch(console.dir);
 
-app.listen(port , '0.0.0.0', () => {
-  console.log(`Server running on port ${port}`);
-});
+// app.listen(port , '0.0.0.0', () => {
+//   console.log(`Server running on port ${port}`);
+// });
 
 export default app;
