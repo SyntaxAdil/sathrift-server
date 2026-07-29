@@ -233,6 +233,6 @@ This project is licensed under the [MIT License](LICENSE).
 
 **Md. Abdur Rahman**
 
-[Portfolio](https://your-portfolio-link.com) · [GitHub](https://github.com/your-username) · [LinkedIn](https://linkedin.com/in/your-linkedin)
+[Portfolio](https://abdur-rahman-dev.vercel.app/) · [GitHub](https://github.com/SyntaxAdil) · [LinkedIn](https://linkedin.com/in/your-linkedin)
 
 </div>
