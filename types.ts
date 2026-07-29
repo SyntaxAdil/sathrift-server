@@ -6,11 +6,14 @@ export interface User {
   image?: string | null;
   email: string;
   createdAt?: Date;
+  phoneNumber: number | string;
+
+  university: string;
 }
 
 export interface Product {
   _id: string | ObjectId;
-  title:string,
+  title: string;
   description: string;
   price: number;
   category: string;
@@ -32,4 +35,3 @@ export interface Wishlist {
   createdAt?: Date;
   updatedAt?: Date;
 }
-
