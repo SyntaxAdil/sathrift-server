@@ -1,7 +1,7 @@
 import type { ObjectId } from "mongodb";
 
 export interface User {
-  _id: string;
+  _id: string | ObjectId;
   name: string;
   image?: string | null;
   email: string;
@@ -26,9 +26,10 @@ export interface Product {
   updatedAt?: Date;
 }
 export interface Wishlist {
-  _id?: string;
+  _id?: string | ObjectId;
   userId: string;
-  productId: string;
+  productId: string | ObjectId;
   createdAt?: Date;
+  updatedAt?: Date;
 }
 

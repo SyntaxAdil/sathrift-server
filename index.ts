@@ -1,22 +1,12 @@
 // server/src/index.ts
-import dns from "node:dns";
-import express, {
-  type Request,
-  type Response,
-  type NextFunction,
-} from "express";
-import cors from "cors";
-import {
-  MongoClient,
-  ServerApiVersion,
-  ObjectId,
-  CommandSucceededEvent,
-} from "mongodb";
+import dns from 'node:dns';
+import express, { type Request, type Response } from 'express';
+import cors from 'cors';
+import { MongoClient, ServerApiVersion, ObjectId } from 'mongodb';
+import dotenv from 'dotenv';
+import { type Product, type Wishlist } from './types';
 
-import dotenv from "dotenv";
-import { type Product, type User, type Wishlist } from "./types";
-
-dns.setServers(["8.8.8.8", "8.8.4.4"]);
+dns.setServers(['8.8.8.8', '8.8.4.4']);
 dotenv.config();
 
 const app = express();
@@ -35,145 +25,282 @@ const client = new MongoClient(uri, {
 });
 
 async function run(): Promise<void> {
-  const db = client.db("sathrift");
-  const productCollection = db.collection<Product>("product");
-  const whislistCollection = db.collection<Wishlist>("user");
-  const userCollection = db.collection<User>("user");
+  await client.connect();
 
-  // product api's
-  // -> add product
-  app.post("/api/product", async (req: Request, res: Response) => {
+  const db = client.db('sathrift');
+  const productCollection = db.collection<Product>('products');
+  const wishlistCollection = db.collection<Wishlist>('wishlists');
+
+  app.post('/api/product', async (req: Request, res: Response) => {
     try {
-      const getSellerId = req.body.sellerId;
-      if (!getSellerId) {
-        res.send("No seller id found");
-        return;
-      }
       const newProduct: Product = {
         ...req.body,
+        status: 'available',
+        views: 0,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
+
       const result = await productCollection.insertOne(newProduct);
-      res.status(200).json({
-        message: "Product added successfully",
+
+      res.status(201).json({
         success: true,
+        message: 'Product added successfully',
         data: result,
       });
-    } catch (error) {
-      console.log(error);
+    } catch {
       res.status(500).json({
-        message: "Product added failed",
         success: false,
-        error: error,
+        message: 'Product added failed',
       });
     }
   });
 
-  // get all product
-  app.get("/api/product", async (req: Request, res: Response) => {
+  app.get('/api/product', async (req: Request, res: Response) => {
     try {
       const { title, category } = req.query;
-      let query: any = {};
+
+      const query: any = {};
+
       if (title) {
-        query.title = { $regex: title as string, $options: "i" };
+        query.$or = [
+          { title: { $regex: title as string, $options: 'i' } },
+          { description: { $regex: title as string, $options: 'i' } },
+        ];
       }
+
       if (category) {
         query.category = category;
       }
 
-      const result = productCollection.find(query).toArray();
+      const result = await productCollection
+        .find(query)
+        .sort({ createdAt: -1 })
+        .toArray();
 
       res.status(200).json({
-        message: "Product fetched successfully",
         success: true,
+        message: 'Products fetched successfully',
         data: result,
       });
-    } catch (error) {
-      console.log(error);
+    } catch {
       res.status(500).json({
-        message: "Product fetched failed",
         success: false,
-        error: error,
+        message: 'Products fetched failed',
       });
     }
   });
 
-  // update product
-  app.patch("/api/product/:id", async (req: Request, res: Response) => {
+  app.get('/api/product/:id', async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
 
-      if (!id) {
-        return res.status(400).send("No product selected");
-      }
+      await productCollection.updateOne(
+        { _id: new ObjectId(id as string) },
+        { $inc: { views: 1 } }
+      );
 
-      const updateProduct: Product = {
+      const result = await productCollection.findOne({
+        _id: new ObjectId(id as string),
+      });
+
+      res.status(200).json({
+        success: true,
+        message: 'Product fetched successfully',
+        data: result,
+      });
+    } catch {
+      res.status(500).json({
+        success: false,
+        message: 'Product fetched failed',
+      });
+    }
+  });
+
+  app.patch('/api/product/:id', async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+
+      const updateProduct = {
         ...req.body,
         updatedAt: new Date(),
       };
 
       const result = await productCollection.updateOne(
         { _id: new ObjectId(id as string) },
-        {
-          $set: updateProduct,
-        },
+        { $set: updateProduct }
       );
 
-      res.status(202).json({
-        message: "Product updated successfully",
-        data: result,
+      res.status(200).json({
         success: true,
+        message: 'Product updated successfully',
+        data: result,
       });
-    } catch (error) {
-      console.log(error);
+    } catch {
       res.status(500).json({
-        message: "Product updated failed",
-
         success: false,
+        message: 'Product updated failed',
       });
     }
   });
-  //  delete product
-  app.delete("/api/product/:id", async (req: Request, res: Response) => {
+
+  app.patch('/api/product/:id/status', async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
+      const { status } = req.body;
 
-      if (!id) {
-        return res.status(400).send("No product selected");
-      }
+      const result = await productCollection.updateOne(
+        { _id: new ObjectId(id as string) },
+        {
+          $set: {
+            status,
+            updatedAt: new Date(),
+          },
+        }
+      );
+
+      res.status(200).json({
+        success: true,
+        message: 'Status updated successfully',
+        data: result,
+      });
+    } catch {
+      res.status(500).json({
+        success: false,
+        message: 'Status update failed',
+      });
+    }
+  });
+
+  app.delete('/api/product/:id', async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
 
       const result = await productCollection.deleteOne({
         _id: new ObjectId(id as string),
       });
 
-      res.status(202).json({
-        message: "Product deleted successfully",
-        data: result,
+      res.status(200).json({
         success: true,
+        message: 'Product deleted successfully',
+        data: result,
       });
-    } catch (error) {
-      console.log(error);
+    } catch {
       res.status(500).json({
-        message: "Product deleted failed",
-
         success: false,
+        message: 'Product deleted failed',
       });
     }
   });
 
-  
-  await client.connect();
-  console.log("✅ Database connected");
-  console.log(`✅ Server running on port ${port}`);
+  app.post('/api/wishlist/:id', async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { userId } = req.body;
+
+      const existing = await wishlistCollection.findOne({
+        userId,
+        productId: new ObjectId(id as string),
+      });
+
+      if (existing) {
+        return res.status(409).json({
+          success: false,
+          message: 'Already wishlisted',
+        });
+      }
+
+      const newWishlist: Wishlist = {
+        userId,
+        productId: new ObjectId(id as string),
+        createdAt: new Date(),
+      };
+
+      const result = await wishlistCollection.insertOne(newWishlist);
+
+      res.status(201).json({
+        success: true,
+        message: 'Product wishlisted successfully',
+        data: result,
+      });
+    } catch {
+      res.status(500).json({
+        success: false,
+        message: 'Product wishlisted failed',
+      });
+    }
+  });
+
+  app.get('/api/wishlist', async (req: Request, res: Response) => {
+    try {
+      const userId = req.query.userId as string;
+
+      const result = await wishlistCollection
+        .aggregate([
+          {
+            $match: { userId },
+          },
+          {
+            $lookup: {
+              from: 'products',
+              localField: 'productId',
+              foreignField: '_id',
+              as: 'product',
+            },
+          },
+          {
+            $unwind: '$product',
+          },
+        ])
+        .toArray();
+
+      res.status(200).json({
+        success: true,
+        message: 'Wishlist fetched successfully',
+        data: result,
+      });
+    } catch {
+      res.status(500).json({
+        success: false,
+        message: 'Wishlist fetched failed',
+      });
+    }
+  });
+
+  app.delete('/api/wishlist/:id', async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { userId } = req.body;
+
+      await wishlistCollection.deleteOne({
+        userId,
+        productId: new ObjectId(id as string),
+      });
+
+      res.status(200).json({
+        success: true,
+        message: 'Product removed from wishlist',
+      });
+    } catch {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to remove from wishlist',
+      });
+    }
+  });
+
+  await wishlistCollection.createIndex(
+    { userId: 1, productId: 1 },
+    { unique: true }
+  );
+
+  console.log('Database connected');
 }
 
 run().catch(console.dir);
 
-if (process.env.NODE_ENV !== "production") {
-  app.listen(port, () =>
-    console.log(`Server running on http://localhost:${port}`),
-  );
-}
+app.listen(port, () => {
+  console.log(`Server running on http://localhost:${port}`);
+});
 
 export default app;
