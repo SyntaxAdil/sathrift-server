@@ -1,16 +1,22 @@
-// server/src/index.ts
 import dns from 'node:dns';
+
 import express, { type Request, type Response } from 'express';
 import cors from 'cors';
+import { toNodeHandler } from 'better-auth/node';
+import { auth } from './auth.js';
 import { MongoClient, ServerApiVersion, ObjectId } from 'mongodb';
 import dotenv from 'dotenv';
 import { type Product, type Wishlist } from './types.js';
-
 dns.setServers(['8.8.8.8', '8.8.4.4']);
+
 dotenv.config();
 
 const app = express();
 app.use(cors());
+
+// auth route — express.json() er AGE mount korte hobe
+app.all('/api/auth/*splat', toNodeHandler(auth));
+
 app.use(express.json());
 
 const uri = process.env.MONGO_URI as string;
@@ -25,8 +31,6 @@ const client = new MongoClient(uri, {
 });
 
 async function run(): Promise<void> {
-  // await client.connect();
-
   const db = client.db('sathrift');
   const productCollection = db.collection<Product>('products');
   const wishlistCollection = db.collection<Wishlist>('wishlists');
@@ -362,7 +366,7 @@ async function run(): Promise<void> {
 
 run().catch(console.dir);
 
-// app.listen(port , '0.0.0.0', () => {
+// app.listen(port, '0.0.0.0', () => {
 //   console.log(`Server running on port ${port}`);
 // });
 
