@@ -16,6 +16,18 @@ export const auth = betterAuth({
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     },
   },
+  user: {
+    additionalFields: {
+      phoneNumber: {
+        type: "string",
+        required: false,
+      },
+      university: {
+        type: "string",
+        required: false,
+      },
+    },
+  },
   trustedOrigins: ["sathrift://", "sathrift://*"],
   secret: process.env.BETTER_AUTH_SECRET!,
   baseURL: process.env.BETTER_AUTH_URL!,
