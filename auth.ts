@@ -1,6 +1,7 @@
 // server/auth.ts
 import { betterAuth } from "better-auth";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
+import { expo } from "@better-auth/expo";
 import { MongoClient } from "mongodb";
 
 const client = new MongoClient(process.env.MONGO_URI as string);
@@ -18,4 +19,5 @@ export const auth = betterAuth({
   trustedOrigins: ["sathrift://", "sathrift://*"],
   secret: process.env.BETTER_AUTH_SECRET!,
   baseURL: process.env.BETTER_AUTH_URL!,
+  plugins: [expo()],
 });
